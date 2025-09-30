@@ -1,10 +1,17 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from fastapi import Request 
 import joblib
 import re
 
 app = FastAPI()
+
+templates = Jinja2Templates(directory="templates")
+
+app.mount("/static", StaticFiles(directory="templates"), name="static") 
 
 # CORS
 app.add_middleware(
@@ -13,12 +20,11 @@ app.add_middleware(
     allow_methods=["*"], allow_headers=["*"],
 )
 
-# Load artifacts
 model = joblib.load("model/spam_classifier.pkl")
 vectorizer = joblib.load("model/vectorizer.pkl")
 accuracy = joblib.load("model/accuracy.pkl")
 
-stop_words = {...}  # Use the same set as in training
+stop_words = {...}  
 SAFE_TERMS = ["please", "content" ,"video", "more", "lmao", "jk","explode","fav","dare","kinda"]
 
 
@@ -36,6 +42,10 @@ def preprocess(text):
 
 class CommentRequest(BaseModel):
     comment: str
+
+@app.get("/")
+def root(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
 @app.post("/predict")
 def predict(request: CommentRequest):
