@@ -1,14 +1,118 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Spam Detector</title>
-  <link rel="stylesheet" href="static/style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spam Detector</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #f4f7f9;
+        }
+        .card {
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+    </style>
 </head>
-<body>
-  <h1>Spam Detection</h1>
-  <textarea id="comment" placeholder="Enter a comment..."></textarea>
-  <button onclick="checkSpam()">Check</button>
-  <p id="result"></p>
-  <script src="script.js"></script>
+<body class="p-6">
+    <div class="card bg-white p-8 rounded-xl w-full max-w-lg">
+        <h1 class="text-3xl font-extrabold mb-6 text-gray-800 border-b pb-3">
+            <span class="text-indigo-600">Spam</span> Detector
+        </h1>
+        
+        <textarea 
+            id="comment" 
+            placeholder="Please enter the comment you want to check here (e.g., 'Click this link now!')"
+            rows="5"
+            class="w-full p-4 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-700 resize-none mb-4"
+        ></textarea>
+        
+        <button 
+            onclick="checkSpam()" 
+            id="checkButton"
+            class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 ease-in-out transform hover:scale-[1.01] focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50"
+        >
+            Check Spam
+        </button>
+        
+        <div id="result" class="mt-6 p-4 rounded-lg text-center font-bold min-h-[4rem] flex items-center justify-center transition-all duration-300">
+            Please enter text above to start.
+        </div>
+        <p id="loadingIndicator" class="hidden mt-4 text-indigo-600">Processing</p>
+    </div>
+
+    <script>
+        const API_URL = "http://127.0.0.1:8000/predict";
+        
+        async function checkSpam() {
+            const comment = document.getElementById("comment").value.trim();
+            const resultEl = document.getElementById("result");
+            const loadingEl = document.getElementById("loadingIndicator");
+            const buttonEl = document.getElementById("checkButton");
+            
+            if (comment === "") {
+                resultEl.className = "mt-6 p-4 rounded-lg bg-yellow-100 text-yellow-700 font-bold flex items-center justify-center";
+                resultEl.innerText = "Please input a comment first.";
+                return;
+            }
+
+            // UI Feedback
+            resultEl.innerText = "";
+            resultEl.className = "mt-6";
+            loadingEl.classList.remove('hidden');
+            buttonEl.disabled = true;
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ comment })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                const prediction = data.prediction;
+                const accuracy = data.accuracy;
+                
+                let bgColor, textColor;
+
+                if (prediction === "Spam") {
+                    bgColor = "bg-red-100";
+                    textColor = "text-red-700";
+                } else {
+                    bgColor = "bg-green-100";
+                    textColor = "text-green-700";
+                }
+
+                resultEl.className = `mt-6 p-4 rounded-lg ${bgColor} ${textColor} font-bold text-lg flex items-center justify-center`;
+                resultEl.innerHTML = `
+                    <span class="mr-2">${prediction === "Spam" ? '🚨' : '✅'}</span>
+                    <p>
+                        Hasil: <span class="uppercase">${prediction}</span> 
+                        <span class="font-normal text-sm block opacity-75"> (Akurasi: ${accuracy}%) </span>
+                    </p>
+                `;
+
+            } catch (error) {
+                console.error("Fetch Error:", error);
+                resultEl.className = "mt-6 p-4 rounded-lg bg-gray-100 text-gray-700 font-bold flex items-center justify-center";
+                resultEl.innerText = `Error: An error occurred while contacting the API. Check the console and make sure the Python server is running.`;
+            } finally {
+                loadingEl.classList.add('hidden');
+                buttonEl.disabled = false;
+            }
+        }
+    </script>
 </body>
 </html>
+
