@@ -4,3 +4,5 @@ scikit-learn
 pandas
 nltk
 joblib
+re
+jinja2
